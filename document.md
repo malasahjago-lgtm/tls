@@ -1,1 +1,1 @@
-git clone https://github.com/malasahjago-lgtm/tls && cd tls && go run tls.go && node bots --debug
+git clone https://github.com/malasahjago-lgtm/tls && cd tls && go run tls.go
