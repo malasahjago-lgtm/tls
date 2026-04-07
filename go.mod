@@ -1,6 +1,6 @@
 module httpclient
 
-go 1.26.1
+go 1.26.0
 
 require (
 	github.com/quic-go/quic-go v0.42.0
