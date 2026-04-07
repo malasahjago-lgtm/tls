@@ -153,9 +153,9 @@ func makeRequest(client *http.Client, target string, isMobile bool) bool {
 }
 
 func main() {
-	if len(os.Args) < 4 {
-		fmt.Println("Usage: go run tls.go <url> <duration_seconds> <rate_per_second>")
-		fmt.Println("Example: go run tls.go https://example.com 10 100")
+	if len(os.Args) < 5 {
+		fmt.Println("Usage: go run tls.go <url> <duration_seconds> <rate_per_second> <threads>")
+		fmt.Println("Example: go run tls.go https://example.com 10 100 50")
 		os.Exit(1)
 	}
 
@@ -170,9 +170,16 @@ func main() {
 		fmt.Println("Error: rate must be a positive integer (req/s)")
 		os.Exit(1)
 	}
+	threads, err := strconv.Atoi(os.Args[4])
+	if err != nil || threads <= 0 {
+		fmt.Println("Error: threads must be a positive integer")
+		os.Exit(1)
+	}
 
 	http3Client := buildHTTP3Client()
 	http2Client := buildHTTP2Client()
+
+	sem := make(chan struct{}, threads)
 
 	interval := time.Second / time.Duration(rate)
 	ticker := time.NewTicker(interval)
@@ -180,7 +187,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	fmt.Printf("Starting HTTP/3 + HTTP/2 requests to %s\n", target)
-	fmt.Printf("Duration: %ds | Rate: %d req/s\n\n", duration, rate)
+	fmt.Printf("Duration: %ds | Rate: %d req/s | Threads: %d\n\n", duration, rate, threads)
 
 	start := time.Now()
 
@@ -190,10 +197,12 @@ loop:
 		case <-deadline:
 			break loop
 		case <-ticker.C:
+			sem <- struct{}{}
 			wg.Add(1)
 			atomic.AddInt64(&stats.total, 1)
 			go func() {
 				defer wg.Done()
+				defer func() { <-sem }()
 
 				isMobile := rand.Intn(100) < 40
 				useHTTP3 := rand.Intn(100) < 90
